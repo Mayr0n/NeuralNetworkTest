@@ -3,13 +3,12 @@ import cmath as math
 
 
 class Neuron:
-    weights = [0 for i in range(10)]
-    children = list()
-    bias = 1
 
-    def addChild(self, child):
-        self.children.append(child)
-        print("Neurone-enfant ajouté.")
+    def __init__(self, entriesSize):
+        self.weights = list()
+        self.bias = 1
+        for i in range(entriesSize + 2):
+            self.weights.append(r.random())
 
     def get(self, entries):
         return 1 / (1 + math.exp((-1*self.getSomme(entries)))).real
@@ -17,12 +16,10 @@ class Neuron:
     def getSomme(self, entries):
         somme = 0
         for i in range(len(entries)):
-            if self.weights[i] == 0:
-                self.weights[i] = r.random()
             # print("Weight {} : {}".format(i, self.weights[i]))
             somme += entries[i] * self.weights[i]
         # print("Somme : {}".format(somme))
-        somme += self.bias * self.weights[len(entries)+1]
+        somme += self.bias * self.weights[len(self.weights)-1]
         return somme.real
 
     def learn(self, entries, result, showWeights):
