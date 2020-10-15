@@ -7,8 +7,8 @@ class Neuron:
     def __init__(self, entriesSize):
         self.bias_value = 1
         self.weights = list()
-        self.bias = {self.bias_value:r.random()}  # /!\
-        for i in range(entriesSize + 1):
+        self.bias = {self.bias_value: r.random()*2}  # /!\
+        for i in range(entriesSize):
             self.weights.append(r.random())
 
     def get(self, entries):
@@ -26,6 +26,12 @@ class Neuron:
 
     def setBiasWeight(self, weight):
         self.bias[self.bias_value] = weight
+
+    def setWeight(self, index, newvalue):
+        self.weights[index] = newvalue
+
+    def getWeight(self, index):
+        return self.weights[index]
 
     def learn(self, entries, result, showWeights):
         # error e1 = f'(somme)*(y-t) ; f'(x) = math.exp(-x)/(1+2*math.exp(-x)+math.exp(-2*x))
@@ -53,4 +59,3 @@ class Neuron:
             for i in range(len(next_errors)):
                 errors_weighted += next_errors[i] * next_weights[i]
             return df(self.getSomme(entries)) * errors_weighted
-

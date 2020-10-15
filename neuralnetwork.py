@@ -53,42 +53,46 @@ class NeuralNetwork:
     def getColumn(self, column):
         return self.structure[column]
 
+    def getColumns(self):
+        return self.structure
+
     def learn(self, entries, result, showWeights):
-        results = self.getResults(entries)
-        df = lambda x: math.exp(-x) / (1 + 2 * math.exp(-x) + math.exp(-2 * x))
+        results = self.getResults(entries)  # list
+        df = lambda x: math.exp(-x) / (1 + 2 * math.exp(-x) + math.exp(-2 * x))  # dérivée
         i = len(self.structure) - 1  # nombre de colonnes
         errors = list()
 
         while i >= 0:
-            print(i)
             column = self.structure[i]
-            if len(errors) == 0:
+            if len(errors) == 0:  # si dernier neurone
                 neuron = column[0]
                 y = self.getFinalResult(entries)
                 e = df(neuron.getSomme(results[i - 1])) * (y - result)
                 e = e.real
                 errors.append([e])
-                for i in range(len(neuron.weights)):
-                    print("i = {}".format(i))
-                    print("Résultats colonne : {}".format(str(results[i - 1])))
-                    print("Résultats précis : {}".format(str(results[i - 1][i])))
-                    neuron.weights[i] -= (self.learning_rate * e * results[i - 1][i]).real
+                for i3 in range(len(neuron.weights)):
+                    neuron.weights[i3] -= (self.learning_rate * e * results[i3 - 1][i3]).real
                 neuron.setBiasWeight(neuron.getBiasWeight() - self.learning_rate * e * neuron.bias_value)
             else:
                 column_errors = list()
+                previous_column = self.structure[i + 1]  # récupère la colonne d'après
+                previous_errors = errors[i - 1]  # récupère la liste des erreurs de chaque neurone de la colonne d'après
                 for n in range(len(column)):  # pour chaque neurone de la colonne
                     neuron = column[n]
-                    next_errors = errors[i - 1]  # récupère les erreurs de la colonne d'après, enregistrées avant dans le tableau
-                    previous_column = self.structure[i - 1]  # récupère la colonne d'après (inversé dans le while)
                     weighted_errors = 0
-                    for n2 in range(len(previous_column)):  # pour chaque neurone de la colonne d'après
-                        weighted_errors += previous_column[n2].weights[n]*next_errors[n2]  # somme pondérée erreurs
-                    e = df(neuron.getSomme(entries if i == 0 else results[i - 1])) * weighted_errors
+                    previous_neuron = previous_column[0]
+                    weighted_errors += previous_neuron.getWeight(n) * previous_errors[0]
+                    for n2 in range(len(previous_column) - 1):  # pour chaque neurone de la colonne d'avant
+                        previous_neuron = previous_column[n2]
+                        weighted_errors += previous_neuron.getWeight(n)*previous_errors[n2]  # somme pondérée erreurs
+                    e = df(neuron.getSomme(entries if i == 0 else results[i + 1])) * weighted_errors
                     e = e.real
                     column_errors.append(e)
-                    for i in range(len(neuron.weights)):
-                        neuron.weights[i] -= (self.learning_rate * e * results[i - 1][i]).real
+                    for i2 in range(len(neuron.weights)):
+                        delta = (self.learning_rate * e * results[i - 1][i]).real
+                        neuron.setWeight(i2, neuron.getWeight(i2) - delta)
                     neuron.setBiasWeight(neuron.getBiasWeight() - self.learning_rate * e * neuron.bias_value)
                 errors.append(column_errors)
             i -= 1
+
         return self.getResults(entries)
