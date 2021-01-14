@@ -5,7 +5,7 @@ import cmath as math
 
 class NeuralNetwork:
     def __init__(self, sizes, entriesSize):  # sizes = [2, 1]
-        self.learning_rate = 10
+        self.learning_rate = 0.5
         self.structure = list()
         if len(sizes) <= 0:
             raise err.SizeError()
@@ -22,6 +22,7 @@ class NeuralNetwork:
 
     def getResults(self, entries):
         results = list()
+
         for i in range(len(self.structure)):  # pour chaque colonne
             local_results = list()  # résultats donnés par les neurones de la colonne
             for neuron in self.structure[i]:  # pour chaque neuronne de la colonne
@@ -56,43 +57,61 @@ class NeuralNetwork:
     def getColumns(self):
         return self.structure
 
-    def learn(self, entries, result, showWeights):
-        results = self.getResults(entries)  # list
-        df = lambda x: math.exp(-x) / (1 + 2 * math.exp(-x) + math.exp(-2 * x))  # dérivée
-        i = len(self.structure) - 1  # nombre de colonnes
-        errors = list()
+    def learn(self, entries, result_expected):
+        result = self.getFinalResult(entries)
+        results = self.getResults(entries)
+        df = lambda x: (math.exp(-x) / (1 + 2 * math.exp(-x) + math.exp(-2 * x))).real  # dérivée
 
-        while i >= 0:
-            column = self.structure[i]
-            if len(errors) == 0:  # si dernier neurone
-                neuron = column[0]
-                y = self.getFinalResult(entries)
-                e = df(neuron.getSomme(results[i - 1])) * (y - result)
-                e = e.real
-                errors.append([e])
-                for i3 in range(len(neuron.weights)):
-                    neuron.weights[i3] -= (self.learning_rate * e * results[i3 - 1][i3]).real
-                neuron.setBiasWeight(neuron.getBiasWeight() - self.learning_rate * e * neuron.bias_value)
-            else:
-                column_errors = list()
-                previous_column = self.structure[i + 1]  # récupère la colonne d'après
-                previous_errors = errors[i - 1]  # récupère la liste des erreurs de chaque neurone de la colonne d'après
-                for n in range(len(column)):  # pour chaque neurone de la colonne
-                    neuron = column[n]
-                    weighted_errors = 0
-                    previous_neuron = previous_column[0]
-                    weighted_errors += previous_neuron.getWeight(n) * previous_errors[0]
-                    for n2 in range(len(previous_column) - 1):  # pour chaque neurone de la colonne d'avant
-                        previous_neuron = previous_column[n2]
-                        weighted_errors += previous_neuron.getWeight(n)*previous_errors[n2]  # somme pondérée erreurs
-                    e = df(neuron.getSomme(entries if i == 0 else results[i + 1])) * weighted_errors
-                    e = e.real
-                    column_errors.append(e)
-                    for i2 in range(len(neuron.weights)):
-                        delta = (self.learning_rate * e * results[i - 1][i]).real
-                        neuron.setWeight(i2, neuron.getWeight(i2) - delta)
-                    neuron.setBiasWeight(neuron.getBiasWeight() - self.learning_rate * e * neuron.bias_value)
-                errors.append(column_errors)
-            i -= 1
+        actual_columns = self.structure
 
-        return self.getResults(entries)
+        self.structure.reverse()
+
+        total_errors = []  # liste de listes : une erreur = un neurone
+
+        for c in range(self.getNumberOfColumns()):
+            column = self.getColumn(c)
+            column_errors = []
+            for n in range(len(column)):
+                neuron = self.getNeuron(c, n)
+                if c == 0:
+                    error = df(neuron.getSomme(results[self.getNumberOfColumns() - 1]))*(result - result_expected)
+                    column_errors.append(error)
+                elif c == self.getNumberOfColumns() - 1:
+                    error = df(neuron.getSomme(entries)) * neuron.getSomme(total_errors[c - 1])
+                    column_errors.append(error)
+                else:
+                    error = df(neuron.getSomme(results[self.getNumberOfColumns() - 1])) * neuron.getSomme(total_errors[c - 1])
+                    column_errors.append(error)
+            total_errors.append(column_errors)
+
+        for c in range(self.getNumberOfColumns()):
+            column = self.getColumn(c)
+            for n in range(len(column)):
+                neuron = self.getNeuron(c, n)
+                for w in range(len(neuron.weights)):
+                    if c == self.getNumberOfColumns() - 1:
+                        try:
+                            neuron.setWeight(w, neuron.getWeight(w) - self.learning_rate * total_errors[c][n] * entries[w])
+                        except IndexError:
+                            print("len total_err = {}, len total_err_c = {}, len res_1_c = {}".format(len(total_errors),
+                                                                                                      len(total_errors[
+                                                                                                              c]), len(
+                                    results[len(results) - 1 - c])))
+                            print("w = {}, c = {}, n = {}, len = {}, len - c = {}".format(w, c, n, len(results),
+                                                                                          len(results) - 1 - c))
+                    else:
+                        try:
+                            neuron.setWeight(w, neuron.getWeight(w) - self.learning_rate * total_errors[c][n] *
+                                             results[len(results) - 1 - c][w])
+                        except IndexError:
+                            print("len total_err = {}, len total_err_c = {}, len res_1_c = {}".format(len(total_errors),
+                                                                                                      len(total_errors[
+                                                                                                              c]), len(
+                                    results[len(results) - 1 - c])))
+                            print("w = {}, c = {}, n = {}, len = {}, len - c = {}".format(w, c, n, len(results),
+                                                                                          len(results) - 1 - c))
+
+        total_errors.reverse()
+        self.structure.reverse()
+
+        return total_errors
