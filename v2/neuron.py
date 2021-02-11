@@ -29,4 +29,5 @@ class Neuron:
         return 1 / (1 + exp(-entry))
     
     def feed_forward(self, entries):
-        return self.sigmoid(self.weighted_sum(entries)), self.weighted_sum(entries)
+        return self.weighted_sum(entries), self.sigmoid(self.weighted_sum(entries))
+        # return z : l'entrée du neurone et a : le résultat de la sigmoide.

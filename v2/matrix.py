@@ -4,10 +4,10 @@ from v2.errors import SizeError
 
 
 class Matrix:
-    def __init__(self, size=(1, 1), alea=False, set_column=False, remplissage=None):
+    def __init__(self, size=(1, 1), alea=False, set_column=False, fill=None):
         # size est un tuple (x,y) ; x = nombre de lignes, y = nombre de colonnes, remplissage = liste de listes
-        if remplissage is not None:
-            self.matrix = remplissage
+        if fill is not None:
+            self.matrix = fill
         else:
             if set_column:
                 self.matrix = [[0.0 if not alea and x != 0 else random.random() for x in range(size[1])] for y in
@@ -21,7 +21,7 @@ class Matrix:
     @staticmethod
     def list_to_matrix(list):
         if type(list[0]) == tuple or type(list[0]) == list:
-            return Matrix(remplissage=list)
+            return Matrix(fill=list)
         else:
             m = Matrix(size=(len(list), 1))
             for element in list:
@@ -84,7 +84,7 @@ class Matrix:
             s = s[0:len(s) - 1]
             s += "]\n"
         s = s[0:len(s) - 1]
-        s += "\n"
+        s += "]\n"
         return s
 
     def sum(self, list):

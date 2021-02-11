@@ -1,3 +1,6 @@
+from random import randint
+from tkinter import *
+
 from math import exp
 
 from sympy import ln
@@ -11,6 +14,8 @@ class NeuralNetwork:
     def __init__(self, entries, size):
         self.layers = []
         self.len_entries = entries
+        self.size = size
+        self.last_results = []
         for i in range(len(size)):
             if i == 0:
                 self.layers.append(Layer(size[i], entries))
@@ -27,19 +32,20 @@ class NeuralNetwork:
         m_entries = entries
         if type(entries) != Matrix:
             m_entries = Matrix.list_to_matrix(entries)
+
+        results = [m_entries]
+        # les entrées font partie des results pour éviter la disjonction de cas lors de la rétropropagation
+
         if m_entries.get_len_lines() == self.len_entries:
-            results = []
-            sums = []
-            for i in range(len(self.layers)):
-                layer = self.layers[i]
-                if i == 0:
-                    results.append(layer.feed_forward(m_entries)[0])
-                    sums.append(layer.feed_forward(m_entries)[1])
-                else:
-                    results.append(layer.feed_forward(results[i - 1])[0])
-                    sums.append(layer.feed_forward(results[i - 1])[1])
-            return results, sums
-        raise SizeError("Le nombre d'entrée ne correspond au nombre défini par le système.")
+            w_entries = []
+            for i in range(1, len(self.layers) + 1):
+                layer = self.layers[i - 1]
+                w_entries.append(layer.feed_forward(results[i - 1])[0])
+                results.append(layer.feed_forward(results[i - 1])[1])
+            self.last_results = Matrix.list_to_matrix(results)
+            print(self.last_results)
+            return Matrix.list_to_matrix(w_entries), Matrix.list_to_matrix(results)
+        raise SizeError("Le nombre d'entrées ne correspond au nombre défini par le système.")
 
     @staticmethod
     def recipr_sigmoid(x):
@@ -49,42 +55,105 @@ class NeuralNetwork:
     def dsigmoid(x):
         return exp(-x) / ((exp(-x) + 1) ** 2)
 
-    def learn(self, entries, res):  # res = matrix
+    def cost(self, expected_results):
+        elts = self.last_results[self.last_results.get_len_lines() - 1] - expected_results
+        sum = 0
+        for elt in elts.get_column(0):
+            sum += elt ** 2
+        return sum * 0.5
+
+    @staticmethod
+    def dcost(index, nb, expected_results):
+        return 2 * (nb - expected_results.get((0, index)))
+
+    def learn(self, entries, res):
         taux = 0.1
-        results = self.feed_forward(entries)[0]  # Liste matrices, une matrice = une colonne de résultats
-        sums = self.feed_forward(entries)[1]  # Liste matrices, une matrice = une colonne de sommes
-        final_result = results[len(results) - 1]
-        final_sum = sums[len(sums) - 1]
-        cost = ((final_result - res)[0]) ** 2
-        final_error = self.dsigmoid(final_sum[0]) * cost
-        errors = []
-        mferror = Matrix()
-        mferror.set((0, 0), final_error)
-        errors.append(mferror)
+        m_entries = entries
+        m_results = res
+        if type(m_entries) != Matrix:
+            m_entries = Matrix.list_to_matrix(entries)
+        if type(m_results) != Matrix:
+            m_results = Matrix.list_to_matrix(res)
 
-        for i in range(1, len(self.layers)):
-            layer = self.layers[-i]
-            layer_error = Matrix(size=(len(layer.get_neurons()), 1))
-            for j in range(len(layer.get_neurons())):
-                neuron = layer.get_neurons()[j]
-                neuron_sum = sums[-i].get((j, 0))
+        w_feed_entries = self.feed_forward(m_entries)[0]
+        w_feed_results = self.feed_forward(m_entries)[1]
 
-                weighted_errors = 0
-                weights = Matrix(size=(len(layer.get_neurons()), 1))
-                for n in range(len(layer.get_neurons())):
-                    neuron = layer.get_neurons()[n]
-                    weights.set((n, 0), neuron.weights.get((n, 0)))
-                weighted_errors = errors[-i] * weights
-                wse = weighted_errors.complete_sum()
+        for L in range(1, len(self.layers)):
+            # -L sera utilisé pour parcourir les couches à l'envers
+            # ainsi, -L + 1 correspond à la couche avant
+            layer = self.layers[-L]
+            for i in range(len(layer.get_neurons())):
+                neuron = layer.get_neurons()[i]
+                delta = NeuralNetwork.dsigmoid(w_feed_entries.get((-L, i))) * NeuralNetwork.dcost(i, w_feed_results.get(
+                    (-L, i)), m_results)
+                errors = Matrix.list_to_matrix(
+                    [delta * w_feed_results.get((-L + 1), j) for j in range(w_feed_results.get_len_lines())])
+                neuron.weights = neuron.weights + taux * errors
 
-                err = self.dsigmoid(neuron_sum) * wse
-                layer_error.set((j, 0), err)
-            errors.append(layer_error)
+        # delta = dsigmoid(w_ent[i])*dcost(res[i])
 
-        errors.reverse()
-        for l in range(len(self.layers)):
-            layer = self.layers[l]
-            errs = errors[l]
-            for n in range(layer.length()):
+    def display(self):
+        tk = Tk()
+        tk.geometry("1280x720")
+
+        back_frame = Frame(tk, width=1280, height=720)
+        canv_frame = Frame(back_frame, width=1280, height=675)
+        reset_button = Button(back_frame, text="Reset", command=lambda: self.random_weights(canv_frame))
+        result_button = Button(back_frame, text="Results", command=lambda: self.draw_feed(canv_frame))
+        learn_button = Button(back_frame, text="Learn", command=lambda: self.draw_learning(canv_frame))
+        canv_frame.grid(row=0, columnspan=3)
+        reset_button.grid(row=1, column=0)
+        result_button.grid(row=1, column=1)
+        learn_button.grid(row=1, column=2)
+        back_frame.pack()
+        self.redraw_weights(canv_frame)
+        tk.mainloop()
+
+    def redraw_weights(self, frame):
+        for child in frame.winfo_children():
+            if isinstance(child, Frame):
+                child.destroy()
+        for L in range(len(self.layers)):
+            layer = self.layers[L]
+            for n in range(len(layer.get_neurons())):
                 neuron = layer.get_neurons()[n]
-                neuron.set_weights(neuron.get_weights() - errs * taux)
+                nfr = self.get_neuron_frame(frame, neuron, (240, 120))
+                nfr.grid(row=n, column=L)
+        return frame
+
+    @staticmethod
+    def get_neuron_frame(parent, neuron, size, entry=None, result=None):
+        frame = Frame(parent, highlightbackground="black", highlightthickness=1, width=size[0], height=size[1])
+        labels = [Label(frame, text=neuron.get_weights()[w]) for w in range(neuron.get_weights().get_len_lines())]
+        for i in range(len(labels)):
+            frame.rowconfigure(i, weight=1)
+            labels[i].grid(row=i, column=0)
+        canv = Canvas(frame)
+        canv.create_oval(0, 0, 50, 50)
+        canv.grid(rowspan=len(labels), column=2)
+        if entry is not None and result is not None:
+            Label(frame, text=entry).grid(row=0, column=1)
+            Label(frame, text=entry).grid(row=0, column=3)
+        return frame
+
+    def draw_feed(self, canv):
+        self.feed_forward((randint(-5, 5), randint(-5, 5)))
+        self.redraw_weights(canv)
+
+    def draw_learning(self, canv):
+        pattern = [([0, 1], [0]),
+                   ([1, 1], [1]),
+                   ([0, 0], [1]),
+                   ([1, 0], [0])]
+        pat = pattern[randint(0, 5)]
+        self.learn(pat[0], pat[1])
+        self.redraw_weights(canv)
+
+    def random_weights(self, canv):
+        self.layers = []
+        for i in range(len(self.size)):
+            if i == 0:
+                self.layers.append(Layer(self.size[i], self.len_entries))
+            else:
+                self.layers.append(Layer(self.size[i], self.layers[i - 1].length()))
+        self.redraw_weights(canv)

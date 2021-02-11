@@ -19,11 +19,6 @@ class Layer:
         return self.neurons
 
     def feed_forward(self, entries):  # entries est une matrix
-        results = Matrix(size=(len(self.neurons), 1))
-        sums = Matrix(size=(len(self.neurons), 1))
-        for i in range(len(self.neurons)):
-            result = self.neurons[i].feed_forward(entries)[0]
-            sum = self.neurons[i].feed_forward(entries)[1]
-            results.set((i, 0), result)
-            sums.set((i, 0), sum)
-        return results, sums
+        w_entries = [self.neurons[i].feed_forward(entries)[0] for i in range(len(self.neurons))]
+        results = [self.neurons[i].feed_forward(entries)[1] for i in range(len(self.neurons))]
+        return Matrix.list_to_matrix(w_entries), Matrix.list_to_matrix(results)
