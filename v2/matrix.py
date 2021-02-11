@@ -1,14 +1,19 @@
 import random
 
+from v2.errors import SizeError
+
 
 class Matrix:
-    def __init__(self, size=(1, 1), alea=False, set_column=False):
-        # size est un tuple (x,y) ; x = nombre de lignes, y = nombre de colonnes
-        if set_column:
-            self.matrix = [[0.0 if not alea and x != 0 else random.random() for x in range(size[1])] for y in
-                           range(size[0])]
+    def __init__(self, size=(1, 1), alea=False, set_column=False, remplissage=None):
+        # size est un tuple (x,y) ; x = nombre de lignes, y = nombre de colonnes, remplissage = liste de listes
+        if remplissage is not None:
+            self.matrix = remplissage
         else:
-            self.matrix = [[0.0 if not alea else random.random() for x in range(size[1])] for y in range(size[0])]
+            if set_column:
+                self.matrix = [[0.0 if not alea and x != 0 else random.random() for x in range(size[1])] for y in
+                               range(size[0])]
+            else:
+                self.matrix = [[0.0 if not alea else random.random() for x in range(size[1])] for y in range(size[0])]
 
     def get_len_columns(self):
         return len(self.matrix[0])
@@ -71,7 +76,7 @@ class Matrix:
         return sum
 
     def __repr__(self):
-        s = "{"
+        s = ""
         for l in range(len(self.matrix)):
             s += "["
             for c in range(len(self.matrix[l])):
@@ -79,23 +84,28 @@ class Matrix:
             s = s[0:len(s) - 1]
             s += "]\n"
         s = s[0:len(s) - 1]
-        s += "}\n"
+        s += "\n"
+        return s
+
+    def sum(self, list):
+        s = 0
+        for i in list:
+            s += i
         return s
 
     def __mul__(self, m2):  # m1 et m2 sont des Matrix
         if type(m2) == Matrix:
-            m3 = Matrix(size=(self.get_len_lines(), self.get_len_columns()))
-            for i in range(self.get_len_lines()):  # line = i
-                line = self.get_lines()[i]
-                line_m3 = []
-                for j in m2.get_columns():  # column m2 = j
-                    item = 0
-                    for e in range(self.get_len_columns()):
-                        a = line[e]
-                        b = j[e]
-                        item += a * b
-                    line_m3.append(item)
-                m3.set_line(i, line_m3)
+            if self.get_len_columns() == m2.get_len_lines():
+                m3 = Matrix(size=(self.get_len_lines(), m2.get_len_columns()))
+                for line in self.get_lines():
+                    m3_line = []
+                    for j in m2.get_columns():
+                        m3_element_line = sum([line[e]*j[e] for e in range(m2.get_len_columns())])
+                        m3_line.append(m3_element_line)
+                    m3.set_line(self.get_lines().index(line), m3_line)
+            else:
+                raise SizeError("La taille des colonnes de la première matrice "
+                                "ne correspond pas au nombre de lignes de la seconde !")
         else:
             m3 = Matrix(size=(self.get_len_lines(), self.get_len_columns()))
             for i in range(self.get_len_lines()):
