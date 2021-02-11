@@ -2,6 +2,7 @@ from math import exp
 
 from sympy import ln
 
+from v2.errors import SizeError
 from v2.layer import Layer
 from v2.matrix import Matrix
 
@@ -9,6 +10,7 @@ from v2.matrix import Matrix
 class NeuralNetwork:
     def __init__(self, entries, size):
         self.layers = []
+        self.len_entries = entries
         for i in range(len(size)):
             if i == 0:
                 self.layers.append(Layer(size[i], entries))
@@ -22,17 +24,22 @@ class NeuralNetwork:
         return S
 
     def feed_forward(self, entries):
-        results = []
-        sums = []
-        for i in range(len(self.layers)):
-            layer = self.layers[i]
-            if i == 0:
-                results.append(layer.feed_forward(entries)[0])
-                sums.append(layer.feed_forward(entries)[1])
-            else:
-                results.append(layer.feed_forward(results[i - 1])[0])
-                sums.append(layer.feed_forward(results[i - 1])[1])
-        return results, sums
+        m_entries = entries
+        if type(entries) != Matrix:
+            m_entries = Matrix.list_to_matrix(entries)
+        if m_entries.get_len_lines() == self.len_entries:
+            results = []
+            sums = []
+            for i in range(len(self.layers)):
+                layer = self.layers[i]
+                if i == 0:
+                    results.append(layer.feed_forward(m_entries)[0])
+                    sums.append(layer.feed_forward(m_entries)[1])
+                else:
+                    results.append(layer.feed_forward(results[i - 1])[0])
+                    sums.append(layer.feed_forward(results[i - 1])[1])
+            return results, sums
+        raise SizeError("Le nombre d'entrée ne correspond au nombre défini par le système.")
 
     @staticmethod
     def recipr_sigmoid(x):

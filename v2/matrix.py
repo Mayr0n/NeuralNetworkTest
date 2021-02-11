@@ -19,14 +19,14 @@ class Matrix:
         return len(self.matrix[0])
 
     @staticmethod
-    def list_to_matrix(giga_list, set_column=False):
-        m = Matrix(size=(len(giga_list), 1))
-        for i in range(len(giga_list)):
-            if not set_column:
-                m.set_line(i, giga_list[i])
-            else:
-                m.set_column(i, giga_list[i])
-        return m
+    def list_to_matrix(list):
+        if type(list[0]) == tuple or type(list[0]) == list:
+            return Matrix(remplissage=list)
+        else:
+            m = Matrix(size=(len(list), 1))
+            for element in list:
+                m.set_line(list.index(element), [element])
+            return m
 
     def get_len_lines(self):
         return len(self.matrix)
@@ -103,6 +103,12 @@ class Matrix:
                         m3_element_line = sum([line[e]*j[e] for e in range(m2.get_len_columns())])
                         m3_line.append(m3_element_line)
                     m3.set_line(self.get_lines().index(line), m3_line)
+            elif self.get_len_columns() == m2.get_len_columns() and self.get_len_columns() == 1:
+                m3 = Matrix(size=(self.get_len_lines(), 1))
+                c1 = self.get_column(0)
+                c2 = m2.get_column(0)
+                m3.set_column(0, [c1[e]*c2[e] for e in range(m2.get_len_lines())])
+                return m3
             else:
                 raise SizeError("La taille des colonnes de la première matrice "
                                 "ne correspond pas au nombre de lignes de la seconde !")
