@@ -1,6 +1,6 @@
 import random
 
-from v2.errors import SizeError
+from errors import SizeError
 
 
 class Matrix:
@@ -27,6 +27,10 @@ class Matrix:
             for element in list:
                 m.set_line(list.index(element), [element])
             return m
+
+    @staticmethod
+    def matrix_to_list(matrix):
+        return matrix.get_column(0)
 
     def get_len_lines(self):
         return len(self.matrix)
@@ -100,14 +104,14 @@ class Matrix:
                 for line in self.get_lines():
                     m3_line = []
                     for j in m2.get_columns():
-                        m3_element_line = sum([line[e]*j[e] for e in range(m2.get_len_columns())])
+                        m3_element_line = sum([line[e] * j[e] for e in range(m2.get_len_columns())])
                         m3_line.append(m3_element_line)
                     m3.set_line(self.get_lines().index(line), m3_line)
             elif self.get_len_columns() == m2.get_len_columns() and self.get_len_columns() == 1:
                 m3 = Matrix(size=(self.get_len_lines(), 1))
                 c1 = self.get_column(0)
                 c2 = m2.get_column(0)
-                m3.set_column(0, [c1[e]*c2[e] for e in range(m2.get_len_lines())])
+                m3.set_column(0, [c1[e] * c2[e] for e in range(m2.get_len_lines())])
                 return m3
             else:
                 raise SizeError("La taille des colonnes de la première matrice "
@@ -123,12 +127,18 @@ class Matrix:
         for i in range(self.get_len_lines()):
             m3.set_line(i, [self.get_line(i)[j] + m2.get_line(i)[j] for j in range(len(self.get_line(i)))])
         return m3
-    
+
     def __sub__(self, m2):
         m3 = Matrix(size=(self.get_len_lines(), self.get_len_columns()))
         for i in range(self.get_len_lines()):
             m3.set_line(i, [self.get_line(i)[j] - m2.get_line(i)[j] for j in range(len(self.get_line(i)))])
         return m3
-    
+
     def __getitem__(self, item):
         return self.get([item, 0])
+
+    def __len__(self):
+        if self.get_len_lines() == 1:
+            return len(self.get_columns())
+        elif self.get_len_columns() == 1:
+            return len(self.get_lines())

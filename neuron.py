@@ -1,50 +1,33 @@
-import random as r
-import cmath as math
+from math import exp
+
+from matrix import Matrix
 
 
 class Neuron:
-
-    def __init__(self, entriesSize):
-        self.weights = [r.random().real for i in range(entriesSize)]
+    def __init__(self, number_weights):
+        self.weights = Matrix(size=(number_weights, 1), alea=True, set_column=True)
         self.bias = 1
 
-    def get(self, entries):
-        return 1 / (1 + math.exp((-1 * self.getSomme(entries)))).real
+    def get_weight(self, index):
+        return self.weights.get((index, 0))
 
-    def getSomme(self, entries):
-        somme = 0
-        for i in range(len(entries) - 1):
-            try:
-                somme += entries[i] * self.weights[i]
-            except IndexError:
-                print("Entries : {}, nb poids  {}".format(entries, len(self.weights)))
-        somme += self.bias
-        return somme.real
+    def set_weights(self, weights):
+        self.weights = weights
 
-    def setWeight(self, index, newvalue):
-        self.weights[index] = newvalue
+    def get_weights(self):
+        return self.weights
 
-    def getWeight(self, index):
-        return self.weights[index]
+    def weighted_sum(self, entries):
+        weighted_entries = self.weights * entries
+        sum = 0
+        for item in weighted_entries.get_column(0):
+            sum += item
+        sum += self.bias
+        return sum
 
-    def learn(self, entries, result, showWeights, learning_rate):
-        df = lambda x: math.exp(-x) / (1 + 2 * math.exp(-x) + math.exp(-2 * x))
-        y = self.get(entries)
-        e1 = df(self.getSomme(entries)) * (y - result)
-
-        for i in range(len(entries)):
-            self.weights[i] -= learning_rate * e1 * entries[i]
-
-        #  print("Résultat attendu : {}, Résultat obtenu : {}, Après correction : {}".format(result, y, self.get(entries)))
-
-    def getError(self, entries, next_errors=tuple(), next_weights=tuple(), final_result=0,
-                 right_result=0, column=0):
-        df = lambda x: math.exp(-x) / (1 + 2 * math.exp(-x) + math.exp(-2 * x))
-        if column == 0:
-            return df(self.getSomme(entries)) * (final_result - right_result)
-        else:
-            column += 1  # ?
-            errors_weighted = 0
-            for i in range(len(next_errors)):
-                errors_weighted += next_errors[i] * next_weights[i]
-            return df(self.getSomme(entries)) * errors_weighted
+    def sigmoid(self, entry):
+        return 1 / (1 + exp(-entry))
+    
+    def feed_forward(self, entries):
+        return self.weighted_sum(entries), self.sigmoid(self.weighted_sum(entries))
+        # return z : l'entrée du neurone et a : le résultat de la sigmoide.

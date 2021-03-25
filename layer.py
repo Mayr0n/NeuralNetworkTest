@@ -1,5 +1,5 @@
-from v2.matrix import Matrix
-from v2.neuron import Neuron
+from matrix import Matrix
+from neuron import Neuron
 
 
 class Layer:
@@ -12,11 +12,17 @@ class Layer:
             S += "1 "
         return S
 
+    def __len__(self):
+        return len(self.neurons)
+
     def length(self):
         return len(self.neurons)
 
     def get_neurons(self):
         return self.neurons
+
+    def get_neuron(self, index):
+        return self.neurons[index]
 
     def feed_forward(self, entries):  # entries est une matrix
         w_entries = [self.neurons[i].feed_forward(entries)[0] for i in range(len(self.neurons))]
