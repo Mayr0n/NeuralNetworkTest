@@ -18,16 +18,26 @@ def lSum(termes):
 
 
 class NeuralNetwork:
-    def __init__(self, entries, size):
+    def __init__(self, entries, size, trainingPattern,
+                 last_function=lambda x: 1 / (1 + exp(-x)), last_df=lambda x: exp(-x) / ((exp(-x) + 1) ** 2), weights=None):
         self.layers = []
         self.len_entries = entries
         self.size = size
+        self.training_pattern = trainingPattern
         self.last_results = []
         for i in range(len(size)):
             if i == 0:
                 self.layers.append(Layer(size[i], entries))
+            elif i == len(size) - 1:
+                self.layers.append(Layer(size[i], self.layers[i - 1].length(), function=last_function, df=last_df))
             else:
                 self.layers.append(Layer(size[i], self.layers[i - 1].length()))
+
+    def get_layers(self):
+        return self.layers
+
+    def get_layer(self, index):
+        return self.layers[index]
 
     def __repr__(self):
         S = ""
@@ -55,26 +65,18 @@ class NeuralNetwork:
             # les données sont entrées de la couche 1 à L dans l'ordre croissant.
         raise SizeError("Le nombre d'entrées ne correspond au nombre défini par le système.")
 
-    @staticmethod
-    def recipr_sigmoid(x):
-        return -ln((1 / x) - 1)
+    # def cost(self, expected_results):
+    #     elts = self.last_results[self.last_results.get_len_lines() - 1] - expected_results
+    #     sum = 0
+    #     for elt in elts.get_column(0):
+    #         sum += elt ** 2
+    #     return sum * 0.5
+    #
+    # @staticmethod
+    # def dcost(nb, expected):
+    #     return 1 / 2 * (nb - expected) ** 2
 
-    @staticmethod
-    def dsigmoid(x):
-        return exp(-x) / ((exp(-x) + 1) ** 2)
-
-    def cost(self, expected_results):
-        elts = self.last_results[self.last_results.get_len_lines() - 1] - expected_results
-        sum = 0
-        for elt in elts.get_column(0):
-            sum += elt ** 2
-        return sum * 0.5
-
-    @staticmethod
-    def dcost(nb, expected):
-        return 1 / 2 * (nb - expected) ** 2
-
-    def learn(self, entries, res):
+    def learn(self, entries, res, printer=False):
         taux = 0.1
         m_entries = entries
         m_results = res
@@ -84,8 +86,10 @@ class NeuralNetwork:
         # pour a et z, chaque élément est une liste correspondant à une couche l
 
         errors = []  # il y a une erreur par neurone.
-        last_errors = [self.dsigmoid(z[-1][n]) * (a[-1][n] - m_results[n]) for n in
-                       range(len(self.layers[-1].get_neurons()))]
+        last_errors = []
+        for n in range(len(self.layers[-1].get_neurons())):
+            neuron = self.layers[-1].get_neuron(n)
+            last_errors.append(neuron.derivative(z[-1][n]) * (a[-1][n] - m_results[n]))
         # toutes les erreurs de la dernière colonne.
         errors.append(last_errors)  # Sûr.
 
@@ -100,7 +104,7 @@ class NeuralNetwork:
                 for n2 in range(len(next_layer.get_neurons())):
                     neuron2 = next_layer.get_neuron(n2)
                     weighted_errors += errors[0][n2] * neuron2.get_weight(n)
-                layer_errors.append(self.dsigmoid(z[-l][n]) * weighted_errors)
+                layer_errors.append(neuron.derivative(z[-l][n]) * weighted_errors)
             errors.reverse()
             errors.append(layer_errors)
 
@@ -116,72 +120,7 @@ class NeuralNetwork:
                     new_weights.append(neuron.get_weight(w) - taux * errors[l][n] * a[l - 1][w])
                 neuron.set_weights(Matrix.list_to_matrix(new_weights))
 
-        print("Avant : \n{}".format(a[-2]))
-        print("Après : \n{}".format(self.feed_forward(m_entries)[1][-1]))
-        print("Voulu : \n{}".format(m_results))
-
-    def display(self):
-        tk = Tk()
-        tk.geometry("720x480")
-
-        back_frame = Frame(tk, width=1280, height=720)
-        canv_frame = Frame(back_frame, width=1280, height=675, highlightbackground="red", highlightthickness=1)
-        reset_button = Button(back_frame, text="Reset", command=lambda: self.random_weights(canv_frame))
-        result_button = Button(back_frame, text="Results", command=lambda: self.draw_feed(canv_frame))
-        learn_button = Button(back_frame, text="Learn", command=lambda: self.draw_learning(canv_frame))
-        canv_frame.grid(row=0, columnspan=3)
-        reset_button.grid(row=1, column=0)
-        result_button.grid(row=1, column=1)
-        learn_button.grid(row=1, column=2)
-        back_frame.pack()
-        self.redraw_weights(canv_frame)
-        tk.mainloop()
-
-    def redraw_weights(self, frame):
-        for child in frame.winfo_children():
-            if isinstance(child, Frame):
-                child.destroy()
-        for L in range(len(self.layers)):
-            layer = self.layers[L]
-            for n in range(len(layer.get_neurons())):
-                neuron = layer.get_neurons()[n]
-                nfr = self.get_neuron_frame(frame, neuron)
-                nfr.grid(row=n, column=L)
-        return frame
-
-    @staticmethod
-    def get_neuron_frame(parent, neuron, entry=None, result=None):
-        frame = Frame(parent, highlightbackground="blue", highlightthickness=1)
-        labels = [Label(frame, text=neuron.get_weights()[w]) for w in range(len(neuron.get_weights()))]
-        for i in range(len(labels)):
-            labels[i].grid(row=i, column=1)
-        canv = Canvas(frame, width=50, height=50)
-        canv.create_oval(0, 0, 25, 25)
-        canv.grid(row=int(len(labels) / 2), column=2)
-        if entry is not None and result is not None:
-            Label(frame, text=entry).grid(row=1, column=0)
-            Label(frame, text=result).grid(row=0, column=3)
-        return frame
-
-    def draw_feed(self, canv):
-        self.feed_forward((randint(-5, 5), randint(-5, 5)))
-        self.redraw_weights(canv)
-
-    def draw_learning(self, canv):
-        pattern = [([0, 1, 0, 1], [0, 0, 0]),
-                   ([0, 1, 1, 0], [0, 1, 0]),
-                   ([1, 0, 0, 1], [1, 0, 1]),
-                   ([0, 0, 0, 0], [0, 0, 0])]
-
-        for i in range(100000):
-            pat = pattern[randint(0, 3)]
-            self.learn(pat[0], pat[1])
-
-    def random_weights(self, canv):
-        self.layers = []
-        for i in range(len(self.size)):
-            if i == 0:
-                self.layers.append(Layer(self.size[i], self.len_entries))
-            else:
-                self.layers.append(Layer(self.size[i], self.layers[i - 1].length()))
-        self.redraw_weights(canv)
+        if printer:
+            print("Avant : \n{}".format(a[-2]))
+            print("Après : \n{}".format(self.feed_forward(m_entries)[1][-1]))
+            print("Voulu : \n{}".format(m_results))

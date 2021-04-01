@@ -3,8 +3,11 @@ from neuron import Neuron
 
 
 class Layer:
-    def __init__(self, size, number_entries):
-        self.neurons = [Neuron(number_entries) for i in range(size)]
+    def __init__(self, size, number_entries, function=None, df=None):
+        if function is not None and df is not None:
+            self.neurons = [Neuron(number_entries, function=function, dfunction=df) for i in range(size)]
+        else:
+            self.neurons = [Neuron(number_entries) for i in range(size)]
 
     def __repr__(self):
         S = ""
