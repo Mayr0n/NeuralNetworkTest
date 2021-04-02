@@ -8,10 +8,10 @@ from neuralnetwork import NeuralNetwork
 # prenons l'équation du plan x+y+z=0
 
 pattern = []
-for i in range(20):
+for i in range(150):
     x = randint(0, 5)
     y = randint(0, 5)
-    pattern.append(([x, y], [x**2+y]))
+    pattern.append(([x, y], [0.5*x+y + 1]))
 
 nn = NeuralNetwork(2, (3, 2, 1), trainingPattern=pattern,
                    last_function=lambda x: 30 / (1 + exp(-x)), last_df=lambda x: 30*exp(-x) / ((exp(-x) + 1) ** 2))

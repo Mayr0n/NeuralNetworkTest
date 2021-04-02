@@ -77,7 +77,7 @@ class NeuralNetwork:
     #     return 1 / 2 * (nb - expected) ** 2
 
     def learn(self, entries, res, printer=False):
-        taux = 0.1
+        taux = 0.01
         m_entries = entries
         m_results = res
 

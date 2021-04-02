@@ -56,7 +56,7 @@ class NetworkDisplayer:
         j = 10000
         for i in range(j):
             pat = self.nn.training_pattern[randint(0, 3)]
-            if i <= j * 0.9:
+            if i <= j * 0.95:
                 self.nn.learn(pat[0], pat[1])
             else:
                 self.nn.learn(pat[0], pat[1], printer=True)
